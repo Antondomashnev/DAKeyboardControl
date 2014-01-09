@@ -51,6 +51,20 @@ static char UIViewIsPanning;
 
 - (void)addKeyboardControl:(BOOL)panning actionHandler:(DAKeyboardDidMoveBlock)actionHandler
 {
+    SEL originalSelector = @selector(dealloc);
+    SEL swizzledSelector = @selector(swizzled_dealloc);
+    Method originalMethod = class_getInstanceMethod(self, originalSelector);
+    Method swizzledMethod = class_getInstanceMethod(self, swizzledSelector);
+    class_addMethod(self,
+					originalSelector,
+					class_getMethodImplementation(self, originalSelector),
+					method_getTypeEncoding(originalMethod));
+	class_addMethod(self,
+					swizzledSelector,
+					class_getMethodImplementation(self, swizzledSelector),
+					method_getTypeEncoding(swizzledMethod));
+    method_exchangeImplementations(originalMethod, swizzledMethod);
+    
     self.panning = panning;
     self.keyboardDidMoveBlock = actionHandler;
     
@@ -456,6 +470,12 @@ static char UIViewIsPanning;
 
 
 #pragma mark - UIView Method Overrides
+
+- (void)swizzled_dealloc
+{
+    [self removeKeyboardControl];
+    [self swizzled_dealloc];
+}
 
 // Per Apple documentation:
 // The default implementation of this method does nothing.
